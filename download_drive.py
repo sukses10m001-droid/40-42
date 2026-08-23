@@ -9,7 +9,7 @@ from googleapiclient.http import MediaIoBaseDownload
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 
 # Filter target akun yang ingin didownload saja
-TARGET_AKUN = ['akun-40', 'akun-41', 'akun-42']
+TARGET_AKUN = ['akun-49', 'akun-50', 'akun-51', 'akun-52', 'akun-53', 'akun-54']
 
 def main():
     sa_key_info = os.environ.get('GCP_SA_KEY')
