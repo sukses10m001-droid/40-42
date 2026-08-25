@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ['akun-49', 'akun-50', 'akun-51', 'akun-52', 'akun-53', 'akun-54']
+        target: ['49', '50', '51', '52', '53', '54']
 
     steps:
     - name: Checkout Repository
