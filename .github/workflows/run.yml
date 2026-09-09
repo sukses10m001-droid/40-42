@@ -1,23 +1,26 @@
-name: "sf1m"
+name: "sm41"
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '5 0,6,12,18 * * *'
+  repository_dispatch:
+    types: [trigger-next]
+
+concurrency:
+  group: emjuh-workflow-lock
+  cancel-in-progress: false
 
 jobs:
-  run-bot:
+  run:
     runs-on: ubuntu-latest
     timeout-minutes: 330
-
-    concurrency:
-      group: ${{ github.workflow }}-${{ matrix.target }}
-      cancel-in-progress: true
+    permissions:
+      actions: write
+      contents: read
 
     strategy:
       fail-fast: false
       matrix:
-        target: ['49', '50', '51', '52', '53', '54']
+        target: ['41', '42', '43', '44', '45', '46', '47', '48', '49', '50']
 
     steps:
     - name: Checkout Repository
@@ -28,10 +31,11 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install Google Chrome
+    - name: Install Google Chrome & Hapus Chromedriver Sistem
       run: |
         sudo apt-get update
         sudo apt-get install -y wget google-chrome-stable
+        sudo rm -f /usr/bin/chromedriver
 
     - name: Install Dependencies
       run: |
@@ -45,7 +49,44 @@ jobs:
         TARGET_ACCOUNT: ${{ matrix.target }}
       run: python download_drive.py
 
-    - name: Run All Subfolder Bots In Parallel with Individual Auto-Restart
+    # TRIGGER DITERAPKAN DI LANGKAH TERAKHIR & DI-RUN OLEH SCRIPT TERPISAH
+    - name: Trigger Next Workflow Run
+      if: matrix.target == '41'
+      env:
+        GH_TOKEN: ${{ secrets.MY_PAT }}
+      run: |
+        node -e "
+        const https = require('https');
+        
+        console.log('[+] Memulai countdown 60 detik...');
+        setTimeout(() => {
+          const repo = process.env.GITHUB_REPOSITORY;
+          // Tembak langsung ke nama file run.yml (bukan emjuh.yml)
+          const options = {
+            hostname: 'api.github.com',
+            path: '/repos/' + repo + '/actions/workflows/run.yml/dispatches',
+            method: 'POST',
+            headers: {
+              'User-Agent': 'Nodejs-Trigger',
+              'Authorization': 'Bearer ' + process.env.GH_TOKEN,
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/json'
+            }
+          };
+
+          const req = https.request(options, (res) => {
+            console.log('[ SUCCESS ] Trigger Terkirim! Status:', res.statusCode);
+          });
+
+          req.on('error', (e) => console.error('[ ERROR ] Gagal:', e));
+          req.write(JSON.stringify({ ref: 'main' }));
+          req.end();
+        }, 60000);
+        " &
+        # Simpan PID proses agar step tidak langsung exit dan mematikan timer
+        sleep 62
+
+    - name: Run All Subfolder Bots In Parallel
       run: |
         python3 -c "
         import os, subprocess
@@ -54,12 +95,12 @@ jobs:
         processes = []
 
         def run_bot_loop(bot_dir):
-            cmd = f'until python3 seofast_zhp.py; do echo \"[!] Bot di {bot_dir} terhenti. Restart dalam 5s...\"; sleep 5; done'
+            cmd = f'until python3 sm.py; do echo \"[!] Bot di {bot_dir} terhenti. Restart dalam 5s...\"; sleep 5; done'
             return subprocess.Popen(cmd, shell=True, cwd=bot_dir, executable='/bin/bash')
 
         if os.path.exists(target):
             for root, dirs, files in os.walk(target):
-                if 'seofast_zhp.py' in files:
+                if 'sm.py' in files:
                     print(f'==> Menjalankan Bot dengan Auto-Restart di: {root}')
                     p = run_bot_loop(root)
                     processes.append(p)
